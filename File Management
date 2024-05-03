@@ -1,0 +1,270 @@
+import os
+import subprocess
+import shutil
+from cryptography.fernet import Fernet
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+# Define the filename to store the list of filenames
+FILE_LIST_FILENAME = 'file_list.txt'
+
+
+def create_file(file_name, file_extension):
+    # Combine filename and extension
+    full_file_name = f"{file_name}.{file_extension}"
+    # Create a new file with the specified name
+    with open(full_file_name, 'w') as file:
+        print(f"File '{full_file_name}' created successfully.")
+        # Append the filename to the file list
+        with open(FILE_LIST_FILENAME, 'a') as file_list:
+            file_list.write(full_file_name + '\n')
+
+
+def open_with_default_app(file_name):
+    try:
+        if os.name == 'nt':  # Check if the OS is Windows
+            os.startfile(file_name)
+        else:  # For Unix-based systems
+            subprocess.run(['xdg-open', file_name])
+    except FileNotFoundError:
+        print(f"File '{file_name}' not found.")
+
+
+def open_and_display(file_name):
+    try:
+        # Open the file with the default application
+        open_with_default_app(file_name)
+
+        # Optionally, also display its content
+        with open(file_name, 'r') as file:
+            content = file.read()
+            print(f"Content of '{file_name}':")
+            print(content)
+    except FileNotFoundError:
+        # Handle the case where the file is not found
+        print(f"File '{file_name}' not found.")
+
+
+def display_files(files):
+    # Display the list of available files
+    print("\nList of Files:")
+    for index, file in enumerate(files, start=1):
+        print(f"{index}. {file}")
+
+
+def modify_file(file_name):
+    while True:
+        print("\nOptions:")
+        print("1. Add information")
+        print("2. Delete information")
+        print("3. Go back")
+
+        choice = input("Enter your choice (1/2/3): ")
+
+        if choice == '1':
+            information = input("Enter information to add: ")
+            with open(file_name, 'a') as file:
+                file.write('\n' + information)
+            print("Information added successfully.")
+        elif choice == '2':
+            display_files_inverted(file_name)
+            line_number = int(input("Enter the line number to delete: "))
+            delete_line(file_name, line_number)
+            print("Line deleted successfully.")
+        elif choice == '3':
+            break
+        else:
+            print("Invalid choice. Please enter 1, 2, or 3.")
+
+
+def add_information(file_name):
+    modify_file(file_name)
+
+
+def delete_line(file_name, line_number):
+    with open(file_name, 'r') as file:
+        lines = file.readlines()
+    with open(file_name, 'w') as file:
+        for i, line in enumerate(lines, start=1):
+            if i != line_number:
+                file.write(line)
+
+
+def display_files_inverted(file_name):
+    with open(file_name, 'r') as file:
+        lines = file.readlines()
+    print("\nContent of the file:")
+    for i, line in enumerate(lines, start=1):
+        print(f"{i}. {line.strip()}")
+
+
+def delete_file(file_name):
+    # Delete the specified file
+    try:
+        os.remove(file_name)
+        print(f"File '{file_name}' deleted successfully.")
+        # Remove the filename from the file list
+        with open(FILE_LIST_FILENAME, 'r') as f:
+            lines = f.readlines()
+        with open(FILE_LIST_FILENAME, 'w') as f:
+            for line in lines:
+                if line.strip() != file_name:
+                    f.write(line)
+    except FileNotFoundError:
+        print(f"File '{file_name}' not found.")
+    except PermissionError:
+        print(f"Permission denied to delete file '{file_name}'.")
+
+
+def search_file(files, search_term):
+    found_files = [file for file in files if search_term.lower() in file.lower()]
+    if found_files:
+        print(f"\nFound {len(found_files)} file(s) matching '{search_term}':")
+        for index, file in enumerate(found_files, start=1):
+            print(f"{index}. {file}")
+        return found_files
+    else:
+        print(f"No files found matching '{search_term}'.")
+        return []
+
+
+# Function to move a file from one location to another
+def move_file(source, destination):
+    try:
+        shutil.move(source, destination)
+        print(f"File moved successfully from '{source}' to '{destination}'.")
+    except FileNotFoundError:
+        print("File not found.")
+    except PermissionError:
+        print("Permission denied to move the file.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+# Function to rename a file
+def rename_file(current_name, new_name):
+    try:
+        os.rename(current_name, new_name)
+        print(f"File '{current_name}' renamed to '{new_name}' successfully.")
+    except FileNotFoundError:
+        print("File not found.")
+    except PermissionError:
+        print("Permission denied to rename the file.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+# Function to encrypt a file
+def encrypt_file(file_name, key):
+    try:
+        with open(file_name, 'rb') as file:
+            data = file.read()
+        fernet = Fernet(key)
+        encrypted_data = fernet.encrypt(data)
+        with open(file_name, 'wb') as file:
+            file.write(encrypted_data)
+        print(f"File '{file_name}' encrypted successfully.")
+    except Exception as e:
+        print(f"An error occurred while encrypting the file: {e}")
+
+
+# Function to decrypt a file
+def decrypt_file(file_name, key):
+    try:
+        with open(file_name, 'rb') as file:
+            encrypted_data = file.read()
+        fernet = Fernet(key)
+        decrypted_data = fernet.decrypt(encrypted_data)
+        with open(file_name, 'wb') as file:
+            file.write(decrypted_data)
+        print(f"File '{file_name}' decrypted successfully.")
+    except Exception as e:
+        print(f"An error occurred while decrypting the file: {e}")
+
+
+def main():
+    while True:
+        print("\nOptions:")
+        print("1. Create a new file")
+        print("2. Open and display file content")
+        print("3. Display files")
+        print("4. Modify a file")
+        print("5. Delete a file")
+        print("6. Search for a file")
+        print("7. Move a file")
+        print("8. Rename a file")
+        print("9. Encrypt a file")
+        print("10. Decrypt a file")
+        print("11. Quit")
+
+        choice = input("Enter your choice (1/2/3/4/5/6/7/8/9/10/11): ")
+
+        if choice == '1':
+            # Create a new file
+            file_name = input("Enter the name of the file: ")
+            file_extension = input("Enter the file extension (e.g., txt, py, java): ")
+            create_file(file_name, file_extension)
+
+        elif choice == '2':
+            # Open and display content of a file
+            file_name = input("Enter the name of the file to open: ")
+            open_and_display(file_name)
+
+        elif choice == '3':
+            # Display the list of available files
+            with open(FILE_LIST_FILENAME, 'r') as file_list:
+                files = [line.strip() for line in file_list.readlines()]
+            display_files(files)
+
+        elif choice == '4':
+            # Modify a file
+            file_name = input("Enter the name of the file to modify: ")
+            modify_file(file_name)
+
+        elif choice == '5':
+            # Delete a file
+            file_name = input("Enter the name of the file to delete: ")
+            delete_file(file_name)
+
+        elif choice == '6':
+            # Search for a file
+            search_term = input("Enter the name of the file to search for: ")
+            with open(FILE_LIST_FILENAME, 'r') as file_list:
+                files = [line.strip() for line in file_list.readlines()]
+            search_file(files, search_term)
+
+        elif choice == '7':
+            # Move a file
+            source = input("Enter the current location of the file: ")
+            destination = input("Enter the new location of the file: ")
+            move_file(source, destination)
+
+        elif choice == '8':
+            # Rename a file
+            current_name = input("Enter the current name of the file: ")
+            new_name = input("Enter the new name of the file: ")
+            rename_file(current_name, new_name)
+
+        elif choice == '9':
+            # Encrypt a file
+            file_name = input("Enter the name of the file to encrypt: ")
+            key = Fernet.generate_key()
+            encrypt_file(file_name, key)
+
+        elif choice == '10':
+            # Decrypt a file
+            file_name = input("Enter the name of the file to decrypt: ")
+            key = input("Enter the decryption key: ")
+            decrypt_file(file_name, key)
+
+        elif choice == '11':
+            # Quit the program
+            print("Exiting program. Goodbye!")
+            break
+
+        else:
+            print("Invalid choice. Please enter a number between 1 and 11.")
+
+
+if __name__ == "__main__":
+    main()
